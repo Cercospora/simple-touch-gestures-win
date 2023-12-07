@@ -3,10 +3,73 @@
 #include <vector>
 #include <algorithm>
 #include <cstdio>
-#include <cmath>
 
-static TSTATE mbstate;
-static std::vector<TSTATE> mbDownPattern;
+static std::vector<TSTATE> mbDownPattern[MAX_TOUCH_INPUTS];
+static UINT numMaxInputs = 0;
+
+#define PRINTACTION(x)      \
+    {                       \
+        (x);                \
+        printf("%s\n", #x); \
+    }
+void TouchEventDone(HWND hwnd)
+{
+    HWND nextWindow = GetNextWindow(hwnd, GW_HWNDNEXT);
+    ShowWindow(hwnd, SW_MINIMIZE);
+    
+    const TGESTURE ges = DecodeGesture(mbDownPattern, numMaxInputs);
+    switch (ges)
+    {
+        // 1 finger
+    case TGESTURE::TAP1:
+        break;
+    case TGESTURE::SWIPE1_LEFT:
+        PRINTACTION(MBack(nextWindow));
+        break;
+    case TGESTURE::SWIPE1_RIGHT:
+        PRINTACTION(MForward(nextWindow));
+        break;
+    case TGESTURE::SWIPE1_UP:
+        PRINTACTION(MOpenTab(nextWindow));
+        break;
+    case TGESTURE::SWIPE1_DOWN:
+        PRINTACTION(MCloseTab(nextWindow));
+        break;
+
+        // 2 finger
+    case TGESTURE::TAP2:
+        break;
+    case TGESTURE::SWIPE2_LEFT:
+        PRINTACTION(MPreviousTab(nextWindow));
+        break;
+    case TGESTURE::SWIPE2_RIGHT:
+        PRINTACTION(MNextTab(nextWindow));
+        break;
+    case TGESTURE::SWIPE2_UP:
+        PRINTACTION(MReOpenTab(nextWindow));
+        break;
+    case TGESTURE::SWIPE2_DOWN:
+        PRINTACTION(MCloseApp(nextWindow));
+        break;
+
+    case TGESTURE::NONE:
+        SetActiveWindow(nextWindow);
+        printf("NONE\n");
+        break;
+
+    default:
+        printf("Unhandled code %d\n", (int)ges);
+        break;
+    }
+
+    // clear globals
+    for (auto &it : mbDownPattern)
+    {
+        it.clear();
+    }
+    numMaxInputs = 0;
+}
+#undef PRINTACTION
 
 LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -16,71 +79,37 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
         PostQuitMessage(0);
         break;
     case WM_MOUSEACTIVATE:
-        printf("WM_MOUSEACTIVATE\n");
-        PostQuitMessage(0);
         break;
     case WM_TOUCH:
     {
         UINT cInputs = LOWORD(wParam); // Number of touch points
-        if (cInputs > 1)
-        {
-            PostQuitMessage(0);
-            break;
-        }
-
         TOUCHINPUT pInputs[MAX_TOUCH_INPUTS];
-        cInputs = std::min<size_t>(MAX_TOUCH_INPUTS, cInputs);
+        cInputs = std::min<UINT>(MAX_TOUCH_INPUTS, cInputs);
+        numMaxInputs = std::max<UINT>(numMaxInputs, cInputs);
+
         if (GetTouchInputInfo((HTOUCHINPUT)lParam, cInputs, pInputs, sizeof(TOUCHINPUT)))
         {
-            mbstate.cInputs = cInputs;
-            // Process the touch points
-            for (UINT i = 0; i < 1; i++)
+            for (size_t i = 0; i < MAX_TOUCH_INPUTS; i++)
             {
-                const TOUCHINPUT &ti = pInputs[i];
-                mbstate.pos[i] = {ti.x / 100, ti.y / 100};
-                ScreenToClient(hwnd, &mbstate.pos[i]);
-                mbstate.dwTime = ti.dwTime;
-                mbDownPattern.push_back(mbstate);
+                if (i < cInputs)
+                {
+                    TOUCHINPUT &ti = pInputs[i];
+                    TSTATE mbstate;
+                    mbstate.pos = {ti.x / 100., ti.y / 100.};
+                    mbstate.client = {ti.x / 100, ti.y / 100};
+                    ScreenToClient(hwnd, &mbstate.client);
+                    mbstate.dwTime = ti.dwTime;
+                    mbstate.event = ti.dwFlags;
+                    mbDownPattern[i].push_back(std::move(mbstate));
 
-                // Determine the type of touch event
-                if (ti.dwFlags & TOUCHEVENTF_DOWN)
-                {
-                    // printf("Touch Down %u at (%ld, %ld)\n", i, mbstate.pos[i].x, mbstate.pos[i].y);
-                }
-                if (ti.dwFlags & TOUCHEVENTF_MOVE)
-                {
-                    // printf("Touch Move %u at (%ld, %ld)\n", i, mbstate.pos[i].x, mbstate.pos[i].y);
-                }
-                if (ti.dwFlags & TOUCHEVENTF_UP)
-                {
-                    // printf("Touch Up %u at (%ld, %ld)\n", i, mbstate.pos[i].x, mbstate.pos[i].y);
-                    HWND nextWindow = GetNextWindow(hwnd, GW_HWNDNEXT);
-                    ShowWindow(hwnd, SW_MINIMIZE);
-                    TGESTURE ges = DecodeGesture(mbDownPattern, i);
-                    switch (ges)
+                    if ((ti.dwFlags & TOUCHEVENTF_UP) && cInputs == 1)
                     {
-                    case TGESTURE::SWIPE_LEFT:
-                        printf("LEFT\n");
-                        MBack(nextWindow);
-                        break;
-                    case TGESTURE::SWIPE_RIGHT:
-                        printf("RIGHT\n");
-                        MForward(nextWindow);
-                        break;
-                    case TGESTURE::SWIPE_UP:
-                        printf("UP\n");
-                        MReOpenTab(nextWindow);
-                        break;
-                    case TGESTURE::SWIPE_DOWN:
-                        printf("DOWN\n");
-                        MCloseTab(nextWindow);
-                        break;
-                    default:
-                        printf("NONE\n");
-                        SetActiveWindow(nextWindow);
-                        break;
+                        TouchEventDone(hwnd);
                     }
-                    mbDownPattern.clear();
+                }
+                else
+                {
+                    mbDownPattern[i].emplace_back();
                 }
             }
         }
@@ -127,7 +156,7 @@ int main()
         NULL, NULL, wcex.hInstance, NULL);
     printf("Primary Display Size %dx%d\n", GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN));
 
-    SetLayeredWindowAttributes(hwnd, RGB(255, 255, 255), 16, LWA_ALPHA);
+    SetLayeredWindowAttributes(hwnd, RGB(255, 255, 255), 32, LWA_ALPHA);
     RegisterTouchWindow(hwnd, TWF_FINETOUCH);
     if (!hwnd)
     {
