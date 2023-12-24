@@ -9,12 +9,16 @@ project(touch_gestures)
 if(MSVC)
     set(CMAKE_SYSTEM_VERSION "10.0 (latest installed version)")
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
-    add_definitions(-D_CRT_SECURE_NO_WARNINGS)
-    add_definitions(-D_CRT_SECURE_NO_DEPRECATE)
-    add_definitions(-D_CRT_NONSTDC_NO_DEPRECATE)
-    add_definitions(-DWIN32_LEAN_AND_MEAN)
-    add_definitions(-DNOMINMAX)
-    add_compile_definitions(/MP /arch:AVX2 /fp:fast)
+    add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
+    add_compile_definitions(_CRT_SECURE_NO_DEPRECATE)
+    add_compile_definitions(_CRT_NONSTDC_NO_DEPRECATE)
+    add_compile_definitions(WIN32_LEAN_AND_MEAN)
+    add_compile_definitions(NOMINMAX)
+    add_compile_options(
+        $<$<COMPILE_LANGUAGE:CXX>:-MP>
+        $<$<COMPILE_LANGUAGE:CXX>:-arch:AVX2>
+        $<$<COMPILE_LANGUAGE:CXX>:-fp:fast>
+    )
 endif()
 
 #######################################################################

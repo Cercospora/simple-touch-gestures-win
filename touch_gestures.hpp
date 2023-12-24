@@ -2,7 +2,6 @@
 
 #include <windows.h>
 #include <cstdint>
-#include <complex>
 
 #include <chrono>
 using time_abs = std::chrono::time_point<std::chrono::high_resolution_clock>;
