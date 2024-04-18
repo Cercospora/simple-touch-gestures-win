@@ -125,6 +125,19 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
 
 int main()
 {
+    // Create a named mutex
+    HANDLE hMutex = CreateMutex(NULL, FALSE, "touch_gestures_mutex");
+    if (GetLastError() == ERROR_ALREADY_EXISTS) {
+        // If the mutex already exists, another instance is running
+        HWND hPrev = FindWindow(TEXT("TransparentWindowClass"), TEXT("touch_gestures"));
+        if (hPrev) {
+            // If the window exists, bring it to the foreground
+            ShowWindow(hPrev, SW_SHOW);
+            SetForegroundWindow(hPrev);
+            return 0;
+        }
+    }
+
     HINSTANCE hInstance = GetModuleHandle(NULL);
 
     WNDCLASSEX wcex;
@@ -150,7 +163,7 @@ int main()
     HWND hwnd = CreateWindowEx(
         WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_APPWINDOW,
         wcex.lpszClassName,
-        TEXT("Transparent Window"),
+        TEXT("touch_gestures"),
         WS_POPUP | WS_VISIBLE,
         0, 0, GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN), // primary display size
         NULL, NULL, wcex.hInstance, NULL);
@@ -173,5 +186,6 @@ int main()
         DispatchMessage(&msg);
     }
 
+    CloseHandle(hMutex);
     return 0;
 }

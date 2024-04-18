@@ -134,7 +134,7 @@ inline TGESTURE DecodeGesture(
         const auto &last = *startend[n].second;
         POINTD delta = xy2rt(last.pos - first.pos);
         printf("Delta R,theta = (%lf, %lf)\n", delta.x, delta.y);
-        // x: left -, right +, up -, down +
+        // x: left -, right +, y: up -, down +
         if (abs(delta.x) < tap_tolerance)
         {
             ges[n] = TGESTURE::TAP;

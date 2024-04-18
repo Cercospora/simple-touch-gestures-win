@@ -14,11 +14,11 @@ if(MSVC)
     add_compile_definitions(_CRT_NONSTDC_NO_DEPRECATE)
     add_compile_definitions(WIN32_LEAN_AND_MEAN)
     add_compile_definitions(NOMINMAX)
-    add_compile_options(
-        $<$<COMPILE_LANGUAGE:CXX>:-MP>
-        $<$<COMPILE_LANGUAGE:CXX>:-arch:AVX2>
-        $<$<COMPILE_LANGUAGE:CXX>:-fp:fast>
-    )
+    # add_compile_options(
+    #     $<$<COMPILE_LANGUAGE:CXX>:-MP>
+    #     $<$<COMPILE_LANGUAGE:CXX>:-arch:AVX2>
+    #     $<$<COMPILE_LANGUAGE:CXX>:-fp:fast>
+    # )
 endif()
 
 #######################################################################
